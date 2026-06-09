@@ -127,6 +127,19 @@ gl.write_geneious("out.geneious", "out.geneious", gl.insert_annotation(xml, ann)
   truncated `<sequence_residues>` copy, which is ignored.
 - Tested against Geneious documents from versions 8.x through 2026.x.
 
+## Development
+
+`geneious_lib.py` (repo root) is the single source of truth. The GitHub Pages
+app serves its own copy at `docs/geneious_lib.py`; a versioned pre-commit hook
+keeps the two byte-identical. After cloning, activate it once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Then any commit that changes the root library auto-syncs and stages the `docs/`
+copy — no manual copying, no drift.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

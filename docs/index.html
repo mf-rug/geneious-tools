@@ -1,54 +1,95 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:,">
+<link rel="icon" href="logo.svg">
 <title>Geneious primer annotator</title>
 <style>
-  :root { --bg:#0f1419; --panel:#1a2129; --line:#2c3744; --fg:#e6edf3; --mut:#8b98a5;
-          --accent:#3fb950; --accent2:#2ea043; }
+  :root {
+    --bg:#f4f5f7; --panel:#ffffff; --line:#e3e6eb; --ink:#1f2733; --mut:#6b7585;
+    --accent:#2f6db0; --btn:#33405a; --btn-h:#222d44; --code:#f7f8fa;
+  }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg);
-         font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
-  .wrap { max-width:860px; margin:0 auto; padding:28px 20px 60px; }
-  h1 { font-size:20px; margin:0 0 4px; }
-  .sub { color:var(--mut); margin:0 0 18px; }
-  #status { font-size:12px; padding:8px 12px; border:1px solid var(--line); border-radius:8px;
-            background:var(--panel); margin-bottom:18px; }
-  #status.ready { border-color:var(--accent); color:var(--accent); }
-  #status.err { border-color:#ff7b72; color:#ff7b72; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:880px; margin:0 auto; padding:22px 20px 64px; }
+
+  /* header */
+  header { display:flex; align-items:center; justify-content:space-between; gap:16px;
+           padding-bottom:18px; margin-bottom:22px; border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:13px; min-width:0; }
+  .brand img { height:30px; width:auto; display:block; }
+  .brand .title { font-size:16px; font-weight:600; letter-spacing:-.01em; }
+  .brand .tag { font-size:12px; color:var(--mut); }
+  .meta { display:flex; align-items:center; gap:14px; flex-shrink:0; }
+  .byline { font-size:11.5px; color:var(--mut); text-decoration:none; white-space:nowrap; }
+  .byline:hover { color:var(--accent); text-decoration:underline; }
+  .help { width:22px; height:22px; border-radius:50%; border:1px solid var(--line);
+          background:var(--panel); color:var(--mut); font-size:13px; font-weight:600;
+          cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .help:hover { color:var(--accent); border-color:var(--accent); }
+
+  /* cards */
   .card { background:var(--panel); border:1px solid var(--line); border-radius:10px;
-          padding:18px; margin-bottom:18px; }
-  .card h2 { font-size:14px; margin:0 0 12px; letter-spacing:.04em; text-transform:uppercase;
-             color:var(--mut); }
+          padding:18px; margin-bottom:16px; }
+  .card h2 { font-size:12px; margin:0 0 12px; letter-spacing:.05em; text-transform:uppercase;
+             color:var(--mut); font-weight:600; }
   .tabs { display:flex; gap:6px; margin-bottom:10px; }
-  .tab { padding:5px 12px; border:1px solid var(--line); border-radius:6px; cursor:pointer;
-         color:var(--mut); background:transparent; font:inherit; }
-  .tab.on { color:var(--fg); border-color:var(--accent); background:#13311c; }
-  textarea { width:100%; min-height:120px; resize:vertical; background:#0d1117; color:var(--fg);
-             border:1px solid var(--line); border-radius:6px; padding:10px; font:inherit; }
-  input[type=text], input[type=number] { background:#0d1117; color:var(--fg);
-             border:1px solid var(--line); border-radius:6px; padding:8px 10px; font:inherit; }
-  input[type=file]{ color:var(--mut); font:inherit; }
+  .tab { padding:5px 13px; border:1px solid var(--line); border-radius:6px; cursor:pointer;
+         color:var(--mut); background:var(--panel); font:inherit; font-size:13px; }
+  .tab.on { color:var(--ink); border-color:var(--accent); background:#eaf2fa; font-weight:500; }
+
+  textarea, input[type=text], input[type=number] {
+    width:100%; background:#fff; color:var(--ink); border:1px solid var(--line);
+    border-radius:6px; padding:9px 11px; font-family:inherit; font-size:13px; }
+  textarea { min-height:118px; resize:vertical;
+             font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; }
+  textarea:focus, input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px #2f6db022; }
+  input[type=file]{ color:var(--mut); font-size:13px; }
   .row { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-end; }
   .row > div { flex:1; min-width:180px; }
   label.fld { display:block; color:var(--mut); margin-bottom:5px; font-size:12px; }
   .hide { display:none; }
-  button.go { background:var(--accent2); color:#fff; border:0; border-radius:8px;
-              padding:12px 22px; font:inherit; font-weight:600; cursor:pointer; }
-  button.go:hover { background:var(--accent); }
+
+  button.go { background:var(--btn); color:#fff; border:0; border-radius:8px;
+              padding:11px 22px; font:inherit; font-size:14px; font-weight:600; cursor:pointer; }
+  button.go:hover { background:var(--btn-h); }
   button.go:disabled { opacity:.5; cursor:default; }
-  pre { background:#0d1117; border:1px solid var(--line); border-radius:8px; padding:14px;
-        white-space:pre-wrap; word-break:break-word; max-height:340px; overflow:auto; }
-  .err { color:#ff7b72; }
-  a.dl { color:var(--accent); }
+
+  pre { background:var(--code); border:1px solid var(--line); border-radius:8px; padding:13px;
+        white-space:pre-wrap; word-break:break-word; max-height:340px; overflow:auto;
+        font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  .err { color:#c0392b; }
+  a.dl { color:var(--accent); font-weight:500; text-decoration:none; }
+  a.dl:hover { text-decoration:underline; }
   .hint { color:var(--mut); font-size:12px; margin-top:6px; }
   .foot { color:var(--mut); font-size:12px; margin-top:30px; }
   .foot a { color:var(--mut); }
+
+  /* help modal */
+  .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+           background:rgba(20,26,34,.55); padding:24px; z-index:50; }
+  .modal.show { display:flex; }
+  .modal img { max-width:100%; max-height:88vh; border-radius:8px; background:#fff;
+               box-shadow:0 12px 40px rgba(0,0,0,.3); }
+  .modal .x { position:absolute; top:16px; right:20px; color:#fff; font-size:26px;
+              cursor:pointer; line-height:1; opacity:.85; }
+  .modal .x:hover { opacity:1; }
 </style></head>
 <body><div class="wrap">
-  <h1>Geneious primer annotator</h1>
-  <p class="sub">Paste or upload a target sequence + primer table → download an annotated .geneious file.</p>
-  <div id="status">Loading Python runtime…</div>
+
+  <header>
+    <div class="brand">
+      <img src="logo.svg" alt="geneious-tools logo">
+      <div>
+        <div class="title">Geneious primer annotator</div>
+        <div class="tag">primer matching → .geneious annotations, in your browser</div>
+      </div>
+    </div>
+    <div class="meta">
+      <button class="help" id="help" title="About / help" aria-label="Help">?</button>
+      <a class="byline" href="https://www.fuerstlab.com" target="_blank" rel="noopener">built by Max&nbsp;Fürst</a>
+    </div>
+  </header>
 
   <div class="card">
     <h2>1 · Target sequence</h2>
@@ -57,7 +98,7 @@
       <button class="tab" data-mode="file">File</button>
     </div>
     <div data-pane="seq-paste">
-      <textarea id="seq_text" placeholder="Raw sequence or FASTA, e.g.&#10;>my_plasmid&#10;ATGCAT...&#10;(boilerplate for a valid .geneious is generated automatically)"></textarea>
+      <textarea id="seq_text" placeholder="Raw sequence or FASTA, e.g.&#10;>my_plasmid&#10;ATGCAT...&#10;(valid .geneious boilerplate is generated automatically)"></textarea>
     </div>
     <div data-pane="seq-file" class="hide">
       <input type="file" id="seq_file" accept=".geneious,.fasta,.fa,.fna,.txt,.seq">
@@ -83,7 +124,7 @@
     </div>
   </div>
 
-  <button class="go" id="go" disabled>Generate .geneious</button>
+  <button class="go" id="go" disabled>Loading…</button>
   <div id="out" style="margin-top:20px"></div>
 
   <p class="foot">Runs entirely in your browser via <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a>.
@@ -91,13 +132,14 @@
      <a href="https://github.com/mf-rug/geneious-tools" target="_blank" rel="noopener">source</a></p>
 </div>
 
+<div class="modal" id="modal"><span class="x" id="modalx">×</span><img src="help.png" alt="help"></div>
+
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const status = $("status");
 let pyodide = null;
 
-// --- tab toggles ---
+// tab toggles
 const modes = {seq:"paste", primer:"paste"};
 document.querySelectorAll(".tabs").forEach(t => {
   const grp = t.dataset.group;
@@ -109,19 +151,27 @@ document.querySelectorAll(".tabs").forEach(t => {
   });
 });
 
-// --- boot Pyodide + load the annotation library ---
+// help modal
+const modal = $("modal");
+$("help").onclick = () => modal.classList.add("show");
+const closeModal = () => modal.classList.remove("show");
+$("modalx").onclick = closeModal;
+modal.onclick = e => { if (e.target === modal) closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+// boot Pyodide + load library
 async function boot() {
+  const btn = $("go");
   try {
     pyodide = await loadPyodide();
     const src = await (await fetch("geneious_lib.py")).text();
     pyodide.FS.writeFile("geneious_lib.py", src);
     pyodide.runPython("import geneious_lib as gl");
-    status.textContent = "Ready — Python loaded, runs locally in your browser.";
-    status.className = "ready";
-    $("go").disabled = false;
+    btn.textContent = "Generate .geneious";
+    btn.disabled = false;
   } catch (e) {
-    status.textContent = "Failed to load Python runtime: " + e;
-    status.className = "err";
+    btn.textContent = "Generate .geneious";
+    $("out").innerHTML = `<pre class="err">Failed to load Python runtime: ${String(e).replace(/</g,"&lt;")}</pre>`;
   }
 }
 boot();
@@ -133,9 +183,9 @@ const readBytes = inp => new Promise((res,rej)=>{ const f=inp.files[0]; if(!f) r
 
 $("go").onclick = async () => {
   const btn = $("go"), out = $("out");
+  if (!pyodide) return;
   btn.disabled = true; out.innerHTML = "<pre>Working…</pre>";
   try {
-    // gather inputs
     const seqBytes   = modes.seq==="file"    ? await readBytes($("seq_file"))   : null;
     const seqText    = $("seq_text").value;
     const primersTxt = modes.primer==="file" ? await readText($("primer_file")) : $("primer_text").value;
@@ -143,7 +193,7 @@ $("go").onclick = async () => {
 
     pyodide.globals.set("seq_kind", modes.seq);
     pyodide.globals.set("seq_text", seqText || "");
-    pyodide.globals.set("seq_bytes", seqBytes);            // Uint8Array or null
+    pyodide.globals.set("seq_bytes", seqBytes);
     pyodide.globals.set("primers_text", primersTxt || "");
     pyodide.globals.set("seq_name", $("seq_name").value || "");
     pyodide.globals.set("min_anchor", String($("min_anchor").value || 15));
@@ -160,10 +210,9 @@ fn, data, log = gl.build_document(src, primers_text, seq_name, int(min_anchor))
     const res = r.toJs({dict_converter: Object.fromEntries});
     r.destroy();
 
-    const blob = new Blob([res.data], {type:"application/octet-stream"});
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(new Blob([res.data], {type:"application/octet-stream"}));
     out.innerHTML = `<p><a class="dl" id="dl" href="${url}" download="${res.filename}">⤓ Download ${res.filename}</a></p><pre>${String(res.log).replace(/</g,"&lt;")}</pre>`;
-    $("dl").click();   // auto-trigger download
+    $("dl").click();
   } catch (e) {
     out.innerHTML = `<pre class="err">${String(e).replace(/</g,"&lt;")}</pre>`;
   } finally {

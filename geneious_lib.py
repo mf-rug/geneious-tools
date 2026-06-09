@@ -413,6 +413,34 @@ def fasta_name(text):
     return None
 
 
+def basename_no_ext(path):
+    """Strip directory and a single trailing extension from a filename."""
+    base = (path or "").rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    return re.sub(r"\.[A-Za-z0-9]+$", "", base)
+
+
+def get_document_name(xml_text):
+    """The Geneious document's display name (the <name> in the sequence element)."""
+    m = re.search(r"</storedFields><name>(.*?)</name>", xml_text, re.S)
+    return m.group(1) if m else None
+
+
+def set_document_name(xml_text, new_name):
+    """Rename the Geneious document (the name shown internally, independent of
+    the file name and of the annotations). Updates the sequence-element <name>
+    plus the matching <cache_name> and <INSDSeq_locus> mirrors."""
+    old = get_document_name(xml_text)
+    nn = escape(new_name)
+    xml_text = re.sub(r"(</storedFields><name>).*?(</name>)",
+                      lambda m: m.group(1) + nn + m.group(2), xml_text, count=1, flags=re.S)
+    if old:
+        xml_text = xml_text.replace("<cache_name>%s</cache_name>" % old,
+                                    "<cache_name>%s</cache_name>" % nn)
+        xml_text = xml_text.replace("<INSDSeq_locus>%s</INSDSeq_locus>" % old,
+                                    "<INSDSeq_locus>%s</INSDSeq_locus>" % nn)
+    return xml_text
+
+
 def build_document(seq_source, primers_text, seq_name="", min_anchor=15):
     """Turn a sequence source + primer table into an annotated .geneious.
 
@@ -423,13 +451,22 @@ def build_document(seq_source, primers_text, seq_name="", min_anchor=15):
     A .geneious blob is annotated in place (existing annotations kept); raw
     text / FASTA generates a fresh document. Returns (filename, bytes, log).
     """
+    out_base = None  # filename stem; defaults to doc_name unless set below
     if seq_source.get("kind") == "file":
         data = seq_source["bytes"]
         is_gen, inner = looks_like_geneious(data)
         if is_gen:
-            base_xml = inner
+            # Annotate an existing document in place. Rename it (and the output
+            # file) to '<original>_annotated', keeping the two independent:
+            #   - internal document name  <- existing <name> + '_annotated'
+            #   - output file name        <- uploaded file name + '_annotated'
+            # An explicit Sequence name overrides the internal name verbatim.
+            orig_name = get_document_name(inner) or "sequence"
+            doc_name = seq_name or (orig_name + "_annotated")
+            base_xml = set_document_name(inner, doc_name)
             template = get_charsequence(base_xml)
-            doc_name = seq_name or "annotated"
+            in_base = basename_no_ext(seq_source.get("filename", ""))
+            out_base = seq_name or (in_base + "_annotated" if in_base else doc_name)
         else:
             text = data.decode("utf-8", "replace")
             doc_name = seq_name or fasta_name(text) or "sequence"
@@ -443,6 +480,8 @@ def build_document(seq_source, primers_text, seq_name="", min_anchor=15):
 
     if not template:
         raise ValueError("the target sequence is empty / contains no valid residues")
+    if out_base is None:
+        out_base = doc_name
 
     primers = parse_primers(primers_text)
     log = ["Target: %s  (%d bp)" % (doc_name, len(template)),
@@ -474,7 +513,7 @@ def build_document(seq_source, primers_text, seq_name="", min_anchor=15):
     log.append("\nDone: %d/%d primers matched%s." % (
         matched, len(primers), (", %d multi-locus" % multi) if multi else ""))
 
-    filename = safe_filename(doc_name)
+    filename = safe_filename(out_base)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(filename, xml.encode("utf-8"))

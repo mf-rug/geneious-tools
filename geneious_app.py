@@ -77,7 +77,8 @@ def _decode_source(req, prefix):
         b64 = req.get(prefix + "_file_b64", "")
         if not b64:
             raise ValueError("no sequence file selected")
-        return {"kind": "file", "bytes": base64.b64decode(b64)}
+        return {"kind": "file", "bytes": base64.b64decode(b64),
+                "filename": req.get(prefix + "_filename", "")}
     return {"kind": "paste", "text": req.get(prefix + "_text", "")}
 
 
@@ -206,6 +207,7 @@ document.getElementById("go").onclick = async () => {
       seq_name: document.getElementById("seq_name").value,
       min_anchor: document.getElementById("min_anchor").value || 15,
       seq_file_b64: modes.seq==="file" ? await readB64(document.getElementById("seq_file")) : null,
+      seq_filename: modes.seq==="file" ? (document.getElementById("seq_file").files[0]?.name || "") : "",
       primer_file_b64: modes.primer==="file" ? await readB64(document.getElementById("primer_file")) : null,
     };
     const resp = await fetch("/generate", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(req)});

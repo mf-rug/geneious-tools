@@ -187,6 +187,7 @@ $("go").onclick = async () => {
   btn.disabled = true; out.innerHTML = "<pre>Working…</pre>";
   try {
     const seqBytes   = modes.seq==="file"    ? await readBytes($("seq_file"))   : null;
+    const seqFile    = modes.seq==="file"    ? ($("seq_file").files[0]?.name || "") : "";
     const seqText    = $("seq_text").value;
     const primersTxt = modes.primer==="file" ? await readText($("primer_file")) : $("primer_text").value;
     if (!primersTxt.trim()) throw new Error("no primers provided");
@@ -194,6 +195,7 @@ $("go").onclick = async () => {
     pyodide.globals.set("seq_kind", modes.seq);
     pyodide.globals.set("seq_text", seqText || "");
     pyodide.globals.set("seq_bytes", seqBytes);
+    pyodide.globals.set("seq_filename", seqFile);
     pyodide.globals.set("primers_text", primersTxt || "");
     pyodide.globals.set("seq_name", $("seq_name").value || "");
     pyodide.globals.set("min_anchor", String($("min_anchor").value || 15));
@@ -201,7 +203,7 @@ $("go").onclick = async () => {
     const r = pyodide.runPython(`
 import geneious_lib as gl
 if seq_kind == 'file':
-    src = {'kind': 'file', 'bytes': bytes(seq_bytes.to_py())}
+    src = {'kind': 'file', 'bytes': bytes(seq_bytes.to_py()), 'filename': seq_filename}
 else:
     src = {'kind': 'paste', 'text': seq_text}
 fn, data, log = gl.build_document(src, primers_text, seq_name, int(min_anchor))

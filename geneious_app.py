@@ -13,113 +13,16 @@ and sent as base64, so the server never touches the filesystem.
 """
 
 import base64
-import io
 import json
 import sys
 import webbrowser
-import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import geneious_lib as gl
 
 
 # --------------------------------------------------------------------------- #
-# Core: turn the two inputs into an annotated .geneious (bytes) + a log
-# --------------------------------------------------------------------------- #
-def _looks_like_geneious(data):
-    try:
-        with zipfile.ZipFile(io.BytesIO(data)) as z:
-            inner = z.read(z.namelist()[0]).decode("utf-8", "replace")
-        return "<geneious" in inner and "<charSequence>" in inner, inner
-    except Exception:
-        return False, ""
-
-
-def _safe_filename(name):
-    keep = "-_." + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    base = "".join(c if c in keep else "_" for c in (name or "output")).strip("_")
-    return (base or "output") + ".geneious"
-
-
-def build_document(seq_source, primers_text, seq_name, min_anchor):
-    """seq_source is either {'kind':'paste','text':..} or {'kind':'file','bytes':..}.
-
-    Returns (filename, geneious_bytes, log_text).
-    """
-    # 1. Resolve the base document + template sequence.
-    if seq_source["kind"] == "file":
-        data = seq_source["bytes"]
-        is_gen, inner = _looks_like_geneious(data)
-        if is_gen:
-            base_xml = inner
-            template = gl.get_charsequence(base_xml)
-            doc_name = seq_name or "annotated"
-        else:  # treat the uploaded file as raw text / FASTA
-            text = data.decode("utf-8", "replace")
-            doc_name = seq_name or _fasta_name(text) or "sequence"
-            template = gl.clean_sequence(text)
-            base_xml = gl.make_geneious(doc_name, template)
-    else:  # pasted raw sequence
-        text = seq_source["text"]
-        doc_name = seq_name or _fasta_name(text) or "sequence"
-        template = gl.clean_sequence(text)
-        base_xml = gl.make_geneious(doc_name, template)
-
-    if not template:
-        raise ValueError("the target sequence is empty / contains no valid residues")
-
-    # 2. Parse primers and annotate.
-    primers = gl.parse_primers(primers_text)
-    log = []
-    log.append("Target: %s  (%d bp)" % (doc_name, len(template)))
-    log.append("Primers loaded: %d   |   anchor cutoff: >= %d bp\n" % (len(primers), min_anchor))
-
-    xml = base_xml
-    matched = multi = 0
-    for name, seq in primers:
-        sites = gl.find_all_binding_sites(template, seq, min_anchor=min_anchor)
-        if not sites:
-            log.append("  %-16s NO MATCH (>=%d bp) -- skipped" % (name, min_anchor))
-            continue
-        matched += 1
-        is_multi = len(sites) > 1
-        if is_multi:
-            multi += 1
-            log.append("  %-16s *** MULTIPLE (%d) matches -- annotating all ***" % (name, len(sites)))
-        for i, s in enumerate(sites, 1):
-            ann_name = "%s_%d" % (name, i) if is_multi else name
-            ext = s["extension"]
-            xml = gl.insert_annotation(
-                xml,
-                gl.build_primer_annotation(
-                    ann_name, s["start"], s["end"], s["direction"],
-                    s["binding_seq"], ext, mismatches=0, created_by="geneious_app",
-                ),
-            )
-            log.append("  %-16s %-7s %d-%d  bind=%dnt%s" % (
-                ann_name, s["strand"], s["start"], s["end"], len(s["binding_seq"]),
-                ("  ext(5')=%s" % ext) if ext else "  (full match, no ext)"))
-
-    log.append("\nDone: %d/%d primers matched%s." % (
-        matched, len(primers), (", %d multi-locus" % multi) if multi else ""))
-
-    # 3. Zip it up.
-    filename = _safe_filename(doc_name)
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr(filename, xml.encode("utf-8"))
-    return filename, buf.getvalue(), "\n".join(log)
-
-
-def _fasta_name(text):
-    for line in text.splitlines():
-        if line.startswith(">"):
-            return line[1:].strip().split()[0] if line[1:].strip() else None
-    return None
-
-
-# --------------------------------------------------------------------------- #
-# HTTP handler
+# HTTP handler  (annotation logic lives in geneious_lib.build_document)
 # --------------------------------------------------------------------------- #
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # quiet console
@@ -147,7 +50,7 @@ class Handler(BaseHTTPRequestHandler):
             primers_text = _decode_text(req, "primer")
             if not primers_text.strip():
                 raise ValueError("no primers provided")
-            fname, data, log = build_document(
+            fname, data, log = gl.build_document(
                 seq_source, primers_text,
                 req.get("seq_name", "").strip(),
                 int(req.get("min_anchor", 15)),

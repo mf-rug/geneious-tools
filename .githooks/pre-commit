@@ -1,0 +1,17 @@
+#!/bin/sh
+# Keep docs/geneious_lib.py (served by GitHub Pages) byte-identical to the
+# canonical root geneious_lib.py. The root file is the single source of truth;
+# this copies it into docs/ and stages the copy whenever they differ, so the
+# in-browser app never lags behind the library.
+set -e
+root=$(git rev-parse --show-toplevel)
+src="$root/geneious_lib.py"
+dst="$root/docs/geneious_lib.py"
+
+[ -f "$src" ] || exit 0
+if ! cmp -s "$src" "$dst" 2>/dev/null; then
+    mkdir -p "$root/docs"
+    cp "$src" "$dst"
+    git add "$dst"
+    echo "pre-commit: synced docs/geneious_lib.py from root geneious_lib.py"
+fi

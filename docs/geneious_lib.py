@@ -276,15 +276,18 @@ def make_geneious(name, sequence, topology="linear", annotations_xml=""):
     nm = escape(name or "sequence")
     ts = "1700000000000"  # fixed placeholder epoch-millis; Geneious resets on save
 
+    # Declare a conservative, widely-supported version (mirrors a real
+    # Geneious 8.1.7 / 2018 document) rather than the latest release, so the
+    # generated file opens in as many Geneious versions as possible.
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<geneious version="2026.1.2">\n'
-        '<versions version="2026.1.2" minimumVersion="7.1"/>\n'
+        '<geneious version="8.1.7">\n'
+        '<versions version="8.1.7" minimumVersion="7.1"/>\n'
         '<geneiousDocument '
         'class="com.biomatters.plugins.ncbi.documents.GenBankNucleotideSequence" '
-        'version="1.3-11" revisionNumber="1" geneiousVersion="2026.1.2" '
+        'version="1.3-11" revisionNumber="1" geneiousVersion="8.1.7" '
         'geneiousVersionMinimum="7.1" PluginDocument_FormatLastChanged="7.1" '
-        'PluginDocument_FormatLastExtended="7.1" '
+        'PluginDocument_FormatLastExtended="8.1" '
         'PluginDocument_OldestVersionSerializableTo="6.0" isReferenceOnly="false">'
         "<hiddenFields>"
         "<description></description>"

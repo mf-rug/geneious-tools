@@ -26,7 +26,30 @@ Pure Python standard library — no dependencies.
   (`name_1`, `name_2`, …) and the multi-match is flagged.
 - **Non-destructive.** The input file is never modified; results go to a new file.
 
-## Usage
+## GUI (no command line)
+
+A minimal local web app wraps the same engine:
+
+```bash
+python3 geneious_app.py            # opens http://127.0.0.1:8765
+python3 geneious_app.py 9000       # custom port
+```
+
+It gives you two inputs — **target sequence** and **primers** — each accepting
+either a **pasted value** or a **file**:
+
+- *Target sequence* — paste raw sequence/FASTA (valid `.geneious` boilerplate is
+  generated automatically), or upload a file. Uploading an existing `.geneious`
+  annotates it in place (keeping its annotations); uploading FASTA/text makes a
+  new document.
+- *Primers* — paste or upload a CSV/TSV of `name, sequence`.
+
+Click **Generate** and the annotated `.geneious` downloads. A log shows which
+primers matched, where, and any multi-locus hits. Files are read in the browser
+and sent as base64, so the server never touches your filesystem. Standard
+library only — nothing to install.
+
+## Command line
 
 ```bash
 # Annotate a whole primer table onto a fresh copy

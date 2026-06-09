@@ -209,18 +209,15 @@ def find_all_binding_sites(template, primer, min_anchor=15, strand=None):
     return sites
 
 
-def read_primer_table(path):
-    """Read (name, sequence) pairs from a CSV/TSV.
+def parse_primers(text):
+    """Parse (name, sequence) pairs from CSV/TSV text.
 
     Delimiter is auto-sniffed (tab vs comma). Column order is auto-detected:
     the cell that is pure DNA (ACGTN) is the sequence, the other is the name.
     Rows without a DNA cell (e.g. a header) are skipped.
     """
-    with open(path, newline="") as f:
-        sample = f.read(4096)
-        f.seek(0)
-        delim = "\t" if sample.count("\t") >= sample.count(",") else ","
-        rows = list(csv.reader(f, delimiter=delim))
+    delim = "\t" if text.count("\t") >= text.count(",") else ","
+    rows = list(csv.reader(text.splitlines(), delimiter=delim))
 
     primers = []
     dna = re.compile(r"^[ACGTNacgtn]+$")
@@ -234,6 +231,105 @@ def read_primer_table(path):
         name = next((c for c in cells if c != seq), cells[0])
         primers.append((name, seq.upper()))
     return primers
+
+
+def read_primer_table(path):
+    """Read (name, sequence) pairs from a CSV/TSV file. See parse_primers()."""
+    with open(path, newline="") as f:
+        return parse_primers(f.read())
+
+
+# --------------------------------------------------------------------------- #
+# Generating a fresh .geneious document from a raw sequence
+# --------------------------------------------------------------------------- #
+IUPAC = "ACGTUNRYSWKMBDHV"  # accepted residue alphabet (upper-cased)
+
+
+def clean_sequence(text):
+    """Extract a bare residue string from raw text or FASTA.
+
+    Drops FASTA header lines (starting with '>'), whitespace and any character
+    outside the IUPAC nucleotide alphabet. Returns an upper-case string.
+    """
+    out = []
+    for line in text.splitlines():
+        if line.startswith(">"):
+            continue
+        out.append(line)
+    seq = "".join(out).upper()
+    return "".join(c for c in seq if c in IUPAC)
+
+
+def make_geneious(name, sequence, topology="linear", annotations_xml=""):
+    """Build a minimal but valid Geneious nucleotide document XML string.
+
+    Contains the load-bearing structure only (no database-linkage, history, or
+    view-state cruft): a GenBankNucleotideSequence whose fields and
+    originalElement carry the sequence, name and (optional) annotations.
+    """
+    seq = clean_sequence(sequence)
+    if not seq:
+        raise ValueError("no valid nucleotide residues found in input")
+    L = len(seq)
+    gc = (seq.count("G") + seq.count("C")) / L * 100.0
+    nm = escape(name or "sequence")
+    ts = "1700000000000"  # fixed placeholder epoch-millis; Geneious resets on save
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<geneious version="2026.1.2">\n'
+        '<versions version="2026.1.2" minimumVersion="7.1"/>\n'
+        '<geneiousDocument '
+        'class="com.biomatters.plugins.ncbi.documents.GenBankNucleotideSequence" '
+        'version="1.3-11" revisionNumber="1" geneiousVersion="2026.1.2" '
+        'geneiousVersionMinimum="7.1" PluginDocument_FormatLastChanged="7.1" '
+        'PluginDocument_FormatLastExtended="7.1" '
+        'PluginDocument_OldestVersionSerializableTo="6.0" isReferenceOnly="false">'
+        "<hiddenFields>"
+        "<description></description>"
+        "<cache_name>%s</cache_name>"
+        '<override_modified_date type="date">%s</override_modified_date>'
+        '<cache_created type="date">%s</cache_created>'
+        "</hiddenFields>"
+        "<fields>"
+        "<molType>DNA</molType>"
+        "<topology>%s</topology>"
+        '<sequence_length type="int">%d</sequence_length>'
+        "<sequence_residues>%s</sequence_residues>"
+        "<geneticCode>Standard</geneticCode>"
+        '<gcPercent decimalPlacesDisplayed="1" type="percent">%s</gcPercent>'
+        '<modified_date type="date">%s</modified_date>'
+        "</fields>"
+        "<originalElement><XMLSerialisableRootElement>"
+        "<fields>"
+        "<geneticCode>Standard</geneticCode>"
+        "<topology>%s</topology>"
+        "<molType>DNA</molType>"
+        "</fields>"
+        '<urn type="urn">urn:sequence:local:generated</urn>'
+        '<created type="date">%s</created>'
+        "<storedFields>"
+        '<standardField code="molType" />'
+        '<standardField code="topology" />'
+        '<standardField code="geneticCode" />'
+        "</storedFields>"
+        "<name>%s</name>"
+        "<description />"
+        "<sequenceAnnotations>%s</sequenceAnnotations>"
+        "<charSequence>%s</charSequence>"
+        "<INSD_originalElements>"
+        "<INSDSeq_length>%d</INSDSeq_length>"
+        "<INSDSeq_locus>%s</INSDSeq_locus>"
+        "<INSDSeq_strandedness>double</INSDSeq_strandedness>"
+        "</INSD_originalElements>"
+        "</XMLSerialisableRootElement></originalElement>"
+        "</geneiousDocument>\n"
+        "</geneious>\n"
+    ) % (
+        nm, ts, ts,
+        escape(topology), L, seq, ("%.1f" % gc), ts,
+        escape(topology), ts, nm, annotations_xml, seq, L, nm,
+    )
 
 
 # --------------------------------------------------------------------------- #
